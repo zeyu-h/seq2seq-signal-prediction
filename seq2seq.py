@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
-exercise = 1  # Possible values: 1, 2, 3, or 4.
+exercise = 2  # Possible values: 1, 2, 3, or 4.
 
 from data_util import generate_x_y_data_v1, generate_x_y_data_v2, generate_x_y_data_v3, generate_x_y_data_v4, timer
 
@@ -70,7 +70,7 @@ with tf.variable_scope('Seq2seq'):
 
     # Give a "GO" token to the decoder.
     # Note: we might want to fill the encoder with zeros or its own feedback rather than with "+ enc_inp[:-1]"
-    dec_inp = [-1.2*tf.ones_like(enc_inp[0], dtype=np.float32, name="GO")] + enc_inp[:-1]
+    dec_inp = [tf.zeros_like(enc_inp[0], dtype=np.float32, name="GO")] + enc_inp[:-1]
 
     # Create a `layers_stacked_count` of stacked RNNs (GRU cells here).
     cells = []

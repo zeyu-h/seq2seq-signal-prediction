@@ -19,7 +19,7 @@ def timer(title):
     print("{} - done in {:.0f}s".format(title, time.time() - t0))
 
 
-def generate_x_y_data_v1(isTrain, batch_size):
+def generate_x_y_data_v1(isTrain, batch_size, input_seq_len=10, output_seq_len=10):
     """
     Data for exercise 1.
 
@@ -36,7 +36,6 @@ def generate_x_y_data_v1(isTrain, batch_size):
     For this exercise, let's ignore the "isTrain"
     argument and test on the same data.
     """
-    seq_length = 10
 
     batch_x = []
     batch_y = []
@@ -44,13 +43,13 @@ def generate_x_y_data_v1(isTrain, batch_size):
         rand = random.random() * 2 * math.pi
 
         sig1 = np.sin(np.linspace(0.0 * math.pi + rand,
-                                  3.0 * math.pi + rand, seq_length * 2))
+                                  3.0 * math.pi + rand, input_seq_len + output_seq_len))
         sig2 = np.cos(np.linspace(0.0 * math.pi + rand,
-                                  3.0 * math.pi + rand, seq_length * 2))
-        x1 = sig1[:seq_length]
-        y1 = sig1[seq_length:]
-        x2 = sig2[:seq_length]
-        y2 = sig2[seq_length:]
+                                  3.0 * math.pi + rand, input_seq_len + output_seq_len))
+        x1 = sig1[:input_seq_len]
+        y1 = sig1[input_seq_len:]
+        x2 = sig2[:input_seq_len]
+        y2 = sig2[input_seq_len:]
 
         x_ = np.array([x1, x2])
         y_ = np.array([y1, y2])
@@ -70,7 +69,7 @@ def generate_x_y_data_v1(isTrain, batch_size):
     return batch_x, batch_y
 
 
-def generate_x_y_data_two_freqs(isTrain, batch_size, seq_length):
+def generate_x_y_data_two_freqs(isTrain, batch_size, input_seq_len=15, output_seq_len=15):
     batch_x = []
     batch_y = []
     for _ in range(batch_size):
@@ -79,9 +78,9 @@ def generate_x_y_data_two_freqs(isTrain, batch_size, seq_length):
         amp_rand = random.random() + 0.1
 
         sig1 = amp_rand * np.sin(np.linspace(
-            seq_length / 15.0 * freq_rand * 0.0 * math.pi + offset_rand,
-            seq_length / 15.0 * freq_rand * 3.0 * math.pi + offset_rand,
-            seq_length * 2
+            input_seq_len / 15.0 * freq_rand * 0.0 * math.pi + offset_rand,
+            input_seq_len / 15.0 * freq_rand * 3.0 * math.pi + offset_rand,
+            input_seq_len + output_seq_len
         )
         )
 
@@ -90,14 +89,14 @@ def generate_x_y_data_two_freqs(isTrain, batch_size, seq_length):
         amp_rand = random.random() * 1.2
 
         sig1 = amp_rand * np.cos(np.linspace(
-            seq_length / 15.0 * freq_rand * 0.0 * math.pi + offset_rand,
-            seq_length / 15.0 * freq_rand * 3.0 * math.pi + offset_rand,
-            seq_length * 2
+            input_seq_len / 15.0 * freq_rand * 0.0 * math.pi + offset_rand,
+            input_seq_len / 15.0 * freq_rand * 3.0 * math.pi + offset_rand,
+            input_seq_len + output_seq_len
         )
         ) + sig1
 
-        x1 = sig1[:seq_length]
-        y1 = sig1[seq_length:]
+        x1 = sig1[:input_seq_len]
+        y1 = sig1[input_seq_len:]
 
         x_ = np.array([x1])
         y_ = np.array([y1])
@@ -117,14 +116,14 @@ def generate_x_y_data_two_freqs(isTrain, batch_size, seq_length):
     return batch_x, batch_y
 
 
-def generate_x_y_data_v2(isTrain, batch_size):
+def generate_x_y_data_v2(isTrain, batch_size, input_seq_len=15, output_seq_len=15):
     """
     Similar the the "v1" function, but here we generate a signal with
     2 frequencies chosen randomly - and this for the 2 signals. Plus,
     the lenght of the examples is of 15 rather than 10.
     So we have 30 total values for past and future.
     """
-    return generate_x_y_data_two_freqs(isTrain, batch_size, seq_length=15)
+    return generate_x_y_data_two_freqs(isTrain, batch_size, input_seq_len, output_seq_len)
 
 
 def generate_x_y_data_v3(isTrain, batch_size):

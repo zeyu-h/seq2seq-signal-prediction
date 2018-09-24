@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
-exercise = 1  # Possible values: 1, 2, 3, or 4.
+exercise = 2  # Possible values: 1, 2, 3, or 4.
 
 from data_util import generate_x_y_data_v1, generate_x_y_data_v2, generate_x_y_data_v3, generate_x_y_data_v4, timer
 
@@ -37,7 +37,7 @@ layers_stacked_count = 2  # Number of stacked recurrent cells, on the neural dep
 
 # Optmizer:
 learning_rate = 0.007  # Small lr helps not to diverge during training.
-nb_iters = 500  # How many times we perform a training step (therefore how many times we show a batch).
+nb_iters = 1000  # How many times we perform a training step (therefore how many times we show a batch).
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
@@ -53,7 +53,9 @@ with tf.variable_scope('Seq2seq'):
     decoder_targets = tf.placeholder(tf.float32, shape=(output_seq_length, None, output_dim), name='decoder_targets')
 
     # Decoder: inputs
-    decoder_inputs = tf.placeholder(tf.float32, shape=(output_seq_length, None, input_dim), name='decoder_inputs')
+    #decoder_inputs = tf.placeholder(tf.float32, shape=(input_seq_length, None, input_dim), name='decoder_inputs')
+    decoder_inputs = tf.concat([tf.zeros_like(tf.slice(encoder_inputs, [0,0,0], [1,-1,-1]), dtype=np.float32, name="GO"), \
+                                tf.slice(encoder_inputs, [1,0,0], [-1,-1,-1])], axis=0)
 
     EOS = 0.
 
@@ -82,9 +84,6 @@ with tf.variable_scope('Seq2seq'):
         initial_state=encoder_final_state,
         dtype=tf.float32, time_major=True, scope="plain_decoder"
     )
-
-    # Final outputs: with linear rescaling for enabling possibly large and unrestricted output values.
-    #output_scale_factor = tf.Variable(1.0, name="Output_ScaleFactor")
 
     #reshaped_outputs = output_scale_factor * tf.contrib.layers.fully_connected(decoder_outputs, output_dim, activation_fn=None)
     reshaped_outputs = tf.contrib.layers.fully_connected(decoder_outputs, output_dim,
@@ -129,14 +128,11 @@ def test_batch(sess, batch_size):
     return loss_t[0]
 
 
-def data_hepler(X, Y, training=True):
+def data_hepler(X, Y):
     feed_dict = {encoder_inputs: X}
-
-    if training:
-        feed_dict.update({decoder_targets: Y})
-
-    decode_inputs_ = np.vstack((EOS * np.ones((1, X.shape[1], X.shape[2])), X[:-1]))
-    feed_dict.update({decoder_inputs: decode_inputs_})
+    feed_dict.update({decoder_targets: Y})
+    #decoder_inputs_ = np.vstack((EOS * np.ones((1, X.shape[1], X.shape[2])), X[:-1]))
+    #feed_dict.update({decoder_inputs: decoder_inputs_})
     return feed_dict
 
 
@@ -185,7 +181,7 @@ def predicting(sess):
     print("Let's visualize {} predictions with our signals:".format(nb_predictions))
 
     X, Y = generate_x_y_data(isTrain=False, batch_size=nb_predictions)
-    feed_dict = data_hepler(X, Y, training=False)
+    feed_dict = data_hepler(X, Y)
     outputs = np.array(sess.run([reshaped_outputs], feed_dict)[0])
 
     for j in range(nb_predictions):
