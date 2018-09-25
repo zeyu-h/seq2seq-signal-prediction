@@ -11,7 +11,7 @@ import copy
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
-exercise = 1  # Possible values: 1, 2, 3, or 4.
+exercise = 2  # Possible values: 1, 2, 3, or 4.
 
 from data_util import generate_x_y_data_v1, generate_x_y_data_v2, generate_x_y_data_v3, generate_x_y_data_v4, timer
 
@@ -31,22 +31,23 @@ lambda_l2_reg = 0.003
 
 ## Network Parameters
 # length of input signals
-input_seq_len = 30
+input_seq_len = 60
 # length of output signals
 output_seq_len = 20
 # size of LSTM Cell
 hidden_dim = 32
-# num of input signals
-input_dim = 1
-# num of output signals
-output_dim = 1
 # num of stacked lstm layers
 num_stacked_layers = 2
+#number of iteration in training
+nb_iters = 1000
+#batch size
+batch_size = 32
 # gradient clipping - to avoid gradient exploding
 GRADIENT_CLIPPING = 2.5
 
 
-def build_graph(feed_previous=False):
+
+def build_graph(feed_previous=False, input_dim=1, output_dim=1):
     tf.reset_default_graph()
 
     global_step = tf.Variable(
@@ -222,13 +223,17 @@ def build_graph(feed_previous=False):
 
 
 def train(save_path):
-    nb_iters = 200
-    batch_size = 16
     train_losses = []
     val_losses = []
 
-    rnn_model = build_graph(feed_previous=False)
+    batch_input, batch_output = generate_x_y_data(isTrain=True,
+                                                  batch_size=1,
+                                                  input_seq_len=input_seq_len,
+                                                  output_seq_len=output_seq_len)
+    input_dim = batch_input.shape[-1]
+    output_dim = batch_output.shape[-1]
 
+    rnn_model = build_graph(feed_previous=False, input_dim=input_dim, output_dim=output_dim)
     init = tf.global_variables_initializer()
     with tf.Session() as sess:
         sess.run(init)
@@ -259,15 +264,16 @@ def train(save_path):
 
 def prediction(save_path):
     nb_predictions = 5
-    rnn_model = build_graph(feed_previous=True)
 
-    init = tf.global_variables_initializer()
     batch_input, batch_output = generate_x_y_data(isTrain=True,
                                                   batch_size=nb_predictions,
                                                   input_seq_len=input_seq_len,
                                                   output_seq_len=output_seq_len)
     input_dim = batch_input.shape[-1]
     output_dim = batch_output.shape[-1]
+
+    rnn_model = build_graph(feed_previous=True, input_dim=input_dim, output_dim=output_dim)
+    init = tf.global_variables_initializer()
     with tf.Session() as sess:
         sess.run(init)
 
