@@ -39,12 +39,11 @@ hidden_dim = 32
 # num of stacked lstm layers
 num_stacked_layers = 2
 #number of iteration in training
-nb_iters = 1000
+nb_iters = 200
 #batch size
 batch_size = 32
 # gradient clipping - to avoid gradient exploding
 GRADIENT_CLIPPING = 2.5
-
 
 
 def build_graph(feed_previous=False, input_dim=1, output_dim=1):
@@ -317,5 +316,7 @@ def plot_prediction(x, y, predicts):
 
 if __name__ == "__main__":
     save_path = os.path.join('.\seq2seq_cp', 'univariate_ts_model0')
-    train(save_path)
-    prediction(save_path)
+    with timer('training'):
+        train(save_path)
+    with timer('predicting'):
+        prediction(save_path)
