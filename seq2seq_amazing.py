@@ -27,7 +27,7 @@ if exercise == 4:
 
 ## Parameters
 learning_rate = 0.01
-lambda_l2_reg = 0.003
+lambda_l2_reg = 0.0003
 
 ## Network Parameters
 # length of input signals
@@ -69,13 +69,13 @@ def build_graph(feed_previous=False, input_dim=1, output_dim=1):
     }
 
     with tf.variable_scope('Seq2seq'):
-        # Encoder: inputs
+        # Encoder: inputs, time major
         enc_inp = [
             tf.placeholder(tf.float32, shape=(None, input_dim), name="inp_{}".format(t))
             for t in range(input_seq_len)
         ]
 
-        # Decoder: target outputs
+        # Decoder: target outputs, time major
         target_seq = [
             tf.placeholder(tf.float32, shape=(None, output_dim), name="y".format(t))
             for t in range(output_seq_len)
