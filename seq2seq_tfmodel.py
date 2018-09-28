@@ -33,7 +33,7 @@ input_seq_len = 60
 # length of output signals
 output_seq_len = 20
 # size of LSTM Cell
-hidden_dim = 32
+hidden_dim = 25
 # num of stacked lstm layers
 num_stacked_layers = 2
 #number of iteration in training
@@ -52,19 +52,23 @@ def build_graph(feed_previous=False, input_dim=1, output_dim=1):
         collections=[tf.GraphKeys.GLOBAL_STEP, tf.GraphKeys.GLOBAL_VARIABLES])
 
     with tf.variable_scope('Seq2seq'):
-        encoder_inputs = tf.placeholder(shape=(None, None, input_dim), dtype=tf.float32, name='encoder_inputs')
-        decoder_targets = tf.placeholder(shape=(None, None, output_dim), dtype=tf.float32, name='decoder_targets')
+        #Time major
+        encoder_inputs = tf.placeholder(shape=(input_seq_len, None, input_dim), dtype=tf.float32, name='encoder_inputs')
+        decoder_targets = tf.placeholder(shape=(output_seq_len, None, output_dim), dtype=tf.float32, name='decoder_targets')
 
-        def get_rnn_cell():
+        def get_rnn_cell(hidden_dim):
             with tf.variable_scope('LSTMCell'):
+                '''
                 cells = []
                 for i in range(num_stacked_layers):
                     with tf.variable_scope('RNN_{}'.format(i)):
                         cells.append(tf.contrib.rnn.LSTMCell(hidden_dim))
                 cell = tf.contrib.rnn.MultiRNNCell(cells)
+                '''
+                cell = tf.contrib.rnn.LSTMCell(hidden_dim)
             return cell
 
-        encoder_cell = get_rnn_cell()
+        encoder_cell = get_rnn_cell(hidden_dim)
         with tf.variable_scope('Encoder'):
             ((encoder_fw_outputs,
                 encoder_bw_outputs),
@@ -90,18 +94,14 @@ def build_graph(feed_previous=False, input_dim=1, output_dim=1):
             )
 
         EOS = 0
-        eos_time_slice = tf.ones([batch_size, output_dim], dtype=tf.int32, name='EOS')*EOS
-
-        #fixed output lenght, therefore is not actually used
-        PAD = 1
-        pad_time_slice = tf.zeros([batch_size], dtype=tf.int32, name='PAD')*PAD
+        eos_time_slice = tf.ones([batch_size, output_dim], dtype=tf.float32, name='EOS')*EOS
 
         # output seq plus one EOS at the beginning
-        decoder_lengths = output_seq_len + 1
+        decoder_lengths = output_seq_len
 
         weights = {
             'out': tf.get_variable('Weights_out',
-                                   shape=[hidden_dim, output_dim],
+                                   shape=[hidden_dim*2, output_dim],
                                    dtype=tf.float32,
                                    initializer=tf.truncated_normal_initializer()),
         }
@@ -133,8 +133,8 @@ def build_graph(feed_previous=False, input_dim=1, output_dim=1):
             elements_finished = (time >= decoder_lengths)  # this operation produces boolean tensor of [batch_size]
             # defining if corresponding sequence has ended
 
-            finished = tf.reduce_all(elements_finished)  # -> boolean scalar
-            input = tf.cond(finished, lambda: pad_time_slice, get_next_input)
+            #finished = tf.reduce_all(elements_finished)  # -> boolean scalar
+            input = get_next_input()
             state = previous_state
             output = previous_output
             loop_state = None
@@ -153,17 +153,22 @@ def build_graph(feed_previous=False, input_dim=1, output_dim=1):
             else:
                 return loop_fn_transition(time, previous_output, previous_state, previous_loop_state)
 
-        decoder_cell = get_rnn_cell()
+        decoder_cell = get_rnn_cell(hidden_dim*2)
+        tf.contrib.framework.nest.assert_same_structure(encoder_final_state, decoder_cell.state_size)
         decoder_outputs_ta, decoder_final_state, _ = tf.nn.raw_rnn(decoder_cell, loop_fn)
+
         decoder_outputs = decoder_outputs_ta.stack()
+        decoder_max_steps, decoder_batch_size, decoder_dim = tf.unstack(tf.shape(decoder_outputs))
+        decoder_outputs_flat = tf.reshape(decoder_outputs, (-1, decoder_dim))
+        decoder_reshaped_flat = tf.matmul(decoder_outputs_flat, weights['out']) + biases['out']
+        decoder_shaped_out = tf.reshape(decoder_reshaped_flat, (decoder_max_steps, decoder_batch_size, decoder_dim))
+        #decoder_outputs = tf.matmul(decoder_outputs, weights['out']) + biases['out']
 
 
         # Training loss and optimizer
         with tf.variable_scope('Loss'):
             # L2 loss
-            output_loss = 0
-            for _y, _Y in zip(decoder_outputs, decoder_targets):
-                output_loss += tf.reduce_mean(tf.pow(_y - _Y, 2))
+            output_loss = tf.reduce_mean(tf.pow(decoder_shaped_out - decoder_targets, 2))
 
             # L2 regularization for weights and biases
             reg_loss = 0
